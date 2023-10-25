@@ -35,6 +35,42 @@ class GatewayService(object):
         )
 
     @http(
+        "GET", "/products",
+        expected_exceptions=ProductNotFound
+    )
+    def get_products(self, request, product_id):
+        """
+             Get a list of products with optional filtering and pagination.
+
+             Example query parameters:
+                 - filter: Filter products by title.
+                 - page: Page number.
+                 - per_page: Number of items per page.
+
+             Returns:
+                 JSON response containing products, page, and per_page.
+        """
+        products_rpc = self.products_rpc
+        req = Request(request.environ)
+
+        filter_title_term = req.args.get('filter', '')
+        page = int(req.args.get('page',1))
+        per_page = int(req.args.get('per_page',10))
+
+        products = products_rpc.list(filter_title_term=filter_title_term, page=page, per_page=per_page)
+
+        response_data = {
+            'products': ProductSchema(many=True).dump(products).data,
+            'page': page,
+            'per_page': per_page
+        }
+
+        return Response(
+            json.dumps(response_data),
+            content_type='application/json'
+        )
+
+    @http(
         "POST", "/products",
         expected_exceptions=(ValidationError, BadRequest)
     )

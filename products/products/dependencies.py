@@ -1,3 +1,5 @@
+import re
+
 from nameko import config
 from nameko.extensions import DependencyProvider
 import redis
@@ -43,9 +45,18 @@ class StorageWrapper:
         else:
             return self._from_hash(product)
 
-    def list(self):
+    def list(self, filter_title_term='',page=1, per_page=10):
         keys = self.client.keys(self._format_key('*'))
-        for key in keys:
+
+        if filter_title_term:
+            pattern = re.compile(f'.*{filter_title_term}.*', re.IGNORECASE)
+            keys = [keys for key in keys if pattern.match(self._from_hash(self.client.hgetall(key))['title'])]
+
+        start = (page - 1) * per_page
+        end = start + per_page
+        paginated_keys = keys[start:end]
+
+        for key in paginated_keys:
             yield self._from_hash(self.client.hgetall(key))
 
     def create(self, product):

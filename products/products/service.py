@@ -39,6 +39,11 @@ class ProductsService:
         valid_fields = schema.load(updated_fields).data
         self.storage.update(product_id,valid_fields)
 
+    @rpc
+    def list(self, filter_title_term='', page=1, per_page=10):
+        products = self.storage.list(filter_title_term, page, per_page)
+        return schemas.Product(many=True).dump(products).data
+
     @event_handler('orders', 'order_created')
     def handle_order_created(self, payload):
         for product in payload['order']['order_details']:
