@@ -5,7 +5,6 @@ from nameko.rpc import rpc
 
 from products import dependencies, schemas
 
-
 logger = logging.getLogger(__name__)
 
 
@@ -33,6 +32,12 @@ class ProductsService:
     @rpc
     def delete(self,product_id):
         self.storage.delete(product_id)
+
+    @rpc
+    def update(self,product_id,updated_fields):
+        schema = schemas.UpdateProduct(strict=True)
+        valid_fields = schema.load(updated_fields).data
+        self.storage.update(product_id,valid_fields)
 
     @event_handler('orders', 'order_created')
     def handle_order_created(self, payload):

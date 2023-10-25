@@ -63,6 +63,12 @@ class StorageWrapper:
         else:
             self.client.delete(key)
 
+    def update(self,product_id,updated_fields):
+        if not self.client.exists(self._format_key(product_id)):
+            raise NotFound('Product ID {} does not exist'.format(product_id))
+        else:
+            self.client.hmset(self._format_key(product_id), updated_fields)
+
 class Storage(DependencyProvider):
 
     def setup(self):

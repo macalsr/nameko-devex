@@ -47,13 +47,30 @@ echo "=== Check if product id: the_odyssey was deleted==="
 
 echo
 
+# Test: Update Product
+echo "=== Update product id: the_odyssey ==="
+echo "=== Creating a product id to test update: the_odyssey ==="
+curl -s -XPOST  "${STD_APP_URL}/products" \
+    -H 'accept: application/json' \
+    -H 'Content-Type: application/json' \
+    -d '{"id": "the_odyssey", "title": "The Odyssey", "passenger_capacity": 101, "maximum_speed": 5, "in_stock": 10}'
+echo
+    curl -s -X PATCH "${STD_APP_URL}/products/the_odyssey" \
+    -H 'accept: application/json' \
+    -H 'Content-Type: application/json' \
+    -d '{"title": "The Odysseeey", "passenger_capacity": 101, "maximum_speed": 5, "in_stock": 10}'
+echo
+echo "=== Check if product id: the_odyssey was update==="
+    curl -s "${STD_APP_URL}/products/the_odyssey" | jq .
+
+echo
 # Test: Create Order
 echo "=== Creating Order ==="
 ORDER_ID=$(
     curl -s -XPOST "${STD_APP_URL}/orders" \
     -H 'accept: application/json' \
     -H 'Content-Type: application/json' \
-    -d '{"order_details": [{"product_id": "the_odyssey", "price": "100000.99", "quantity": 1}]}' 
+    -d '{"order_details": [{"product_id": "the_odyssey", "price": "100000.99", "quantity": 1}]}'
 )
 echo ${ORDER_ID}
 ID=$(echo ${ORDER_ID} | jq '.id')

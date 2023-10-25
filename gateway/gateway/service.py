@@ -4,11 +4,11 @@ from marshmallow import ValidationError
 from nameko import config
 from nameko.exceptions import BadRequest
 from nameko.rpc import RpcProxy
-from werkzeug import Response
+from werkzeug import Response, Request
 
 from gateway.entrypoints import http
 from gateway.exceptions import OrderNotFound, ProductNotFound
-from gateway.schemas import CreateOrderSchema, GetOrderSchema, ProductSchema
+from gateway.schemas import CreateOrderSchema, GetOrderSchema, ProductSchema, UpdateProductSchema
 
 
 class GatewayService(object):
@@ -80,6 +80,23 @@ class GatewayService(object):
             self.products_rpc.delete(product_id)
             return Response(status=204)
 
+    @http('PATCH','/products/<string:product_id>',
+          expected_exceptions=(ValidationError, BadRequest, ProductNotFound))
+    def update_product(self, request,product_id):
+
+        schema = UpdateProductSchema(strict=True)
+        try:
+            # load input data through a schema (for validation)
+            # Note - this may raise `ValueError` for invalid json,
+            # or `ValidationError` if data is invalid.
+            updated_product_data= schema.loads(request.get_data(as_text=True)).data
+        except ValueError as ex:
+            raise BadRequest('Invalid json: {}'.format(ex))
+
+        # Update the product
+        self.products_rpc.update(product_id,updated_product_data)
+
+        return Response(status=204)
 
     @http("GET", "/orders/<int:order_id>", expected_exceptions=OrderNotFound)
     def get_order(self, request, order_id):

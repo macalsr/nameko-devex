@@ -34,6 +34,17 @@ def test_list(storage, products):
         products == sorted(list(listed_products), key=lambda x: x['id']))
 
 
+def test_delete(product, redis_client, storage):
+
+    storage.delete(product)
+
+    assert product['id'] is None
+    assert product['title'] is None
+    assert product['maximum_speed'] is None
+    assert product['passenger_capacity'] is None
+    assert product['in_stock'] is None
+
+
 def test_create(product, redis_client, storage):
 
     storage.create(product)

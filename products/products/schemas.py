@@ -7,3 +7,9 @@ class Product(Schema):
     passenger_capacity = fields.Int(required=True)
     maximum_speed = fields.Int(required=True)
     in_stock = fields.Int(required=True)
+
+class UpdateProduct(Schema):
+    title = fields.Str(required=True)
+    passenger_capacity = fields.Int(required=True)
+    maximum_speed = fields.Int(required=True)
+    in_stock = fields.Int(required=True)

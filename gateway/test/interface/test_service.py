@@ -97,6 +97,23 @@ class TestDeleteProduct(object):
         assert payload['error'] == 'PRODUCT_NOT_FOUND'
         assert payload['message'] == 'missing'
 
+class TestUpdateProduct(object):
+    def test_can_update_product(self,gateway_service,web_session):
+        response = web_session.update('/products/the_odyssey')
+        assert response.status_code == 204
+        assert gateway_service.products_rpc.update.call_args_list == [
+            call("the_odyssey")
+        ]
+    def test_update_not_found_on_delete(self,gateway_service,web_session):
+        gateway_service.products_rpx.update.side_effect = (
+            ProductNotFound('missing'))
+
+        response = web_session.update('/products/foo')
+        assert response.status_code == 404
+        payload = response.json()
+        assert payload['error'] == 'PRODUCT_NOT_FOUND'
+        assert payload['message'] == 'missing'
+
 class TestGetOrder(object):
 
     def test_can_get_order(self, gateway_service, web_session):
