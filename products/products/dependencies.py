@@ -52,6 +52,9 @@ class StorageWrapper:
             pattern = re.compile(f'.*{filter_title_term}.*', re.IGNORECASE)
             keys = [keys for key in keys if pattern.match(self._from_hash(self.client.hgetall(key))['title'])]
 
+        page = int(page) if page is not None else 1
+        per_page = int(per_page) if per_page is not None else 10
+
         start = (page - 1) * per_page
         end = start + per_page
         paginated_keys = keys[start:end]

@@ -80,11 +80,29 @@ echo
 # Test: Create Order
 echo "=== Creating Order ==="
 ORDER_ID=$(
-    curl -s -XPOST "${STD_APP_URL}/orders" \
+ curl -X POST http://localhost:8000/orders \
+  -H 'accept: application/json' \
+  -H 'Content-Type: application/json' \
+  -d '{
+    "order_details": [
+    {
+      "product_id": "the_odyssey",
+      "price": "100.99",
+      "quantity": 1
+    },
+    {
+      "product_id": "the_odyssey",
+      "price": "100000.99",
+      "quantity": 1
+    }
+    ]
+  }'
+  )
+  echo "${STD_APP_URL}/orders" \
     -H 'accept: application/json' \
     -H 'Content-Type: application/json' \
-    -d '{"order_details": [{"product_id": "the_odyssey", "price": "100000.99", "quantity": 1}]}'
-)
+    -d '{"order_details": {"product_id": "gm-0.42695048845813344", "price": "100000.99", "quantity": 1}'
+
 echo ${ORDER_ID}
 ID=$(echo ${ORDER_ID} | jq '.id')
 
@@ -92,3 +110,8 @@ ID=$(echo ${ORDER_ID} | jq '.id')
 echo "=== Getting Order ==="
 echo ${ORDER_ID}
 curl -s "${STD_APP_URL}/orders/${ID}" | jq .
+
+# Test: Get Order back
+echo "=== Getting Orders ==="
+curl -s "${STD_APP_URL}/orders" | jq .
+echo
