@@ -56,7 +56,12 @@ class StorageWrapper:
     def decrement_stock(self, product_id, amount):
         return self.client.hincrby(
             self._format_key(product_id), 'in_stock', -amount)
-
+    def delete(self, product_id):
+        key = self._format_key(product_id)
+        if not self.client.exists(key):
+            raise NotFound('Product ID {} not found'.format(product_id))
+        else:
+            self.client.delete(key)
 
 class Storage(DependencyProvider):
 
