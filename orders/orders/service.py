@@ -11,7 +11,7 @@ from orders.schemas import OrderSchema
 class OrderServiceManager:
         db = DatabaseSession(DeclarativeBase)
 
-        @lru_cache(maxsize= 100)
+        @lru_cache(maxsize=256)
         def _get_order(self,order_id):
             order = self.db.query(Order).get(order_id)
             if not order:
