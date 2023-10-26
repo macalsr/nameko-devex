@@ -5,6 +5,7 @@ from nameko import config
 from nameko.exceptions import BadRequest
 from nameko.rpc import RpcProxy
 from werkzeug import Response, Request
+from functools import lru_cache
 
 from gateway.entrypoints import http
 from gateway.exceptions import OrderNotFound, ProductNotFound
@@ -149,28 +150,6 @@ class GatewayService(object):
             mimetype='application/json'
         )
 
-    def _get_order(self, order_id):
-        # Retrieve order data from the orders service.
-        # Note - this may raise a remote exception that has been mapped to
-        # raise``OrderNotFound``
-        order = self.orders_rpc.get_order(order_id)
-
-        # Retrieve all products from the products service
-        product_map = {prod['id']: prod for prod in self.products_rpc.list()}
-
-        # get the configured image root
-        image_root = config['PRODUCT_IMAGE_ROOT']
-
-        # Enhance order details with product and image details.
-        for item in order['order_details']:
-            product_id = item['product_id']
-
-            item['product'] = product_map[product_id]
-            # Construct an image url.
-            item['image'] = '{}/{}.jpg'.format(image_root, product_id)
-
-        return order
-
     @http("GET", "/orders", expected_exceptions=OrderNotFound)
     def get_orders(self, request):
         req = Request(request.environ)
@@ -190,6 +169,22 @@ class GatewayService(object):
             }),
             mimetype='application/json'
         )
+
+    def _get_order(self, order_id):
+        # Retrieve order data from the orders service.
+        # Note - this may raise a remote exception that has been mapped to
+        # raise``OrderNotFound``
+        order = self.orders_rpc.get_order(order_id)
+
+        # Enhance order details with product and image details.
+        for item in order['order_details']:
+            product_id = item['product_id']
+            product = self.products_rpc.get(product_id)
+
+            item['product'] = product
+
+        return order
+
 
     @http(
         "POST", "/orders",
@@ -252,3 +247,8 @@ class GatewayService(object):
         )
         return result['id']
 
+    @http("DELETE","/orders/<int:order_id>", expected_exceptions=OrderNotFound)
+    def delete_order(self,request,order_id):
+        """DELETE AN EXISTING ORDER BY 'ORDER_ID'"""
+        self.orders_rpc.delete_order(order_id)
+        return Response(status=204)

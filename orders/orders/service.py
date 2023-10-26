@@ -1,7 +1,6 @@
 from nameko.events import EventDispatcher
 from nameko.rpc import rpc
 from nameko_sqlalchemy import DatabaseSession
-
 from functools import lru_cache
 
 from orders.exceptions import NotFound
@@ -84,6 +83,8 @@ class OrdersService(OrderServiceManager, OrderDetailsServiceManager):
 
     @rpc
     def delete_order(self, order_id):
-        order = self.db.query(Order).get(order_id)
-        self.db.delete(order)
+        order = self._get_order(order_id)
+        print(order)
+        for order_detail in order.order_details:
+            self.db.delete(order_detail)
         self.db.commit()

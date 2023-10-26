@@ -35,7 +35,7 @@ scenarios:
           "passenger_capacity": ${passenger_capacity},
           "maximum_speed": ${maximum_speed},
           "in_stock": ${in_stock}
-        }          
+        }
       assert:
       - contains:
         - 200
@@ -54,7 +54,7 @@ scenarios:
       label: product-get
       think-time: uniform(0s, 0s)
       method: GET
-        
+
       assert:
       - contains:
         - 200
@@ -85,17 +85,17 @@ scenarios:
       extract-jsonpath:
         order_id: $.id
         default: NOT_FOUND
-  
+
     - if: '"${order_id}" == "NOT_FOUND"'
       then:
         - action: continue
-  
-    # 4. Get Orders
+
+    # 4. Get Order
     - url: /orders/${order_id}
       label: order-get
       think-time: uniform(0s, 0s)
       method: GET
-        
+
       assert:
       - contains:
         - 200
@@ -104,37 +104,68 @@ scenarios:
       extract-jsonpath:
         order_id: $.id
         default: NOT_FOUND
-        
+
     - if: '"${order_id}" == "NOT_FOUND"'
       then:
         - action: continue
 
-    # 5. Delete Product
+    # 5. List Orders
+    - url: /orders
+      label: orders-list
+      think-time: uniform(0s, 0s)
+      method: GET
+
+      assert:
+      - contains:
+        - 200
+        subject: http-code
+        not: false
+      extract-jsonpath:
+        first_order_id: $.orders[0].id
+        default: NOT_FOUND
+
+    - if: '"${first_order_id}" == "NOT_FOUND"'
+      then:
+        - action: continue
+
+    # 6. Delete Order
+    - url: /orders/${order_id}
+      label: order-delete
+      think-time: uniform(0s, 0s)
+      method: DELETE
+
+      assert:
+      - contains:
+        - 204
+        subject: http-code
+        not: false
+
+    # 7. Delete Product
     - url: /products/${product_id}
       label: product-delete
       think-time: uniform(0s, 0s)
       method: DELETE
 
       assert:
-        - contains:
-            - 204
-          subject: http-code
-          not: false
+      - contains:
+        - 204
+        subject: http-code
+        not: false
 
-    # 5. Get Products
+    # 8. Get Products
     - url: /products
       label: product-get
       think-time: uniform(0s, 0s)
       method: GET
 
       assert:
-        - contains:
-            - 204
-          subject: http-code
-          not: false
-
-
-
+      - contains:
+        - 200
+        subject: http-code
+        not: false
+      extract-jsonpath:
+        product_key: $.id
+        default: NOT_FOUND
 reporting:
 - module: final-stats
   dump-xml: stats.xml

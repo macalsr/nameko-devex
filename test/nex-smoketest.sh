@@ -106,12 +106,20 @@ ORDER_ID=$(
 echo ${ORDER_ID}
 ID=$(echo ${ORDER_ID} | jq '.id')
 
-# Test: Get Order back
+# Test: Get Order
 echo "=== Getting Order ==="
 echo ${ORDER_ID}
 curl -s "${STD_APP_URL}/orders/${ID}" | jq .
 
-# Test: Get Order back
+# Test: Get Order
 echo "=== Getting Orders ==="
 curl -s "${STD_APP_URL}/orders" | jq .
+echo
+
+# Test: Delete Order
+echo "=== Deleting order id: the_odyssey ==="
+    curl -s -X DELETE "${STD_APP_URL}/orders/1" | jq .
+echo "=== Check if order id: 1 was deleted==="
+    curl -s "${STD_APP_URL}/orders/1" | jq .
+
 echo
