@@ -15,16 +15,40 @@ def remote_error(exc_path):
     return wrapper
 
 
-@remote_error('orders.exceptions.NotFound')
-class OrderNotFound(Exception):
-    """
-    If the orders service raises a ``NotFound`` error from an RPC call,
-    The ``RemoteError`` will be transformed and raised locally as this
-    exception instead.
-    """
-    pass
-
-
 @remote_error('products.exceptions.NotFound')
 class ProductNotFound(Exception):
+    pass
+
+@remote_error('products.exceptions.NotCreated')
+class ProductNotCreated(Exception):
+
+    pass
+
+@remote_error('products.exceptions.NotUpdated')
+class ProductNotUpdated(Exception):
+
+    pass
+
+@remote_error('products.exceptions.NotDeleted')
+class ProductNotDeleted(Exception):
+
+    pass
+
+@remote_error('orders.exceptions.NotFound')
+class OrderNotFound(Exception):
+    pass
+
+@remote_error('orders.exceptions.NotCreated')
+class OrderNotCreated(Exception):
+
+    pass
+
+@remote_error('orders.exceptions.NotUpdated')
+class OrderNotUpdated(Exception):
+
+    pass
+
+@remote_error('orders.exceptions.NotDeleted')
+class OrderNotDeleted(Exception):
+
     pass
