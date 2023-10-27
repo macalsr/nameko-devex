@@ -152,20 +152,32 @@ scenarios:
         subject: http-code
         not: false
 
-    # 8. Get Products
-    - url: /products
-      label: product-get
+      # 8. list Orders filtering by date
+    - url: /orders
+      label: orders-list-by-date
       think-time: uniform(0s, 0s)
       method: GET
-
+      headers:
+        cache-control: no-cache
+        Content-Type: application/json
+      body: 'request-body-string'
+      body: >
+        {
+          [{"initial_date": "2023-10-26T20:18:24.189615+00:00","final_date": "2023-10-26T20:18:24.189615+00:00"}]
+        }
       assert:
-      - contains:
-        - 200
-        subject: http-code
-        not: false
+        - contains:
+            - 200
+          subject: http-code
+          not: false
       extract-jsonpath:
-        product_key: $.id
+        order_id: $.id
         default: NOT_FOUND
+
+    - if: '"${order_id}" == "NOT_FOUND"'
+      then:
+        - action: continue
+
 reporting:
 - module: final-stats
   dump-xml: stats.xml

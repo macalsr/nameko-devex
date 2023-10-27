@@ -157,6 +157,28 @@ class GatewayService(object):
             mimetype='application/json'
         )
 
+    @http("GET", "/orders", expected_exceptions=OrderNotFound)
+    def get_orders(self, request, initial_date, final_date):
+        req = Request(request.environ)
+
+        page = int(req.args.get('page', 1))
+        per_page = int(req.args.get('per_page', 10))
+
+        orders = self.orders_rpc.list_orders_filtered_by_creation_date(page=page,
+                                                              per_page=per_page,
+                                                              initial_date=initial_date,
+                                                              final_date=final_date)
+
+        # Serialize and return the orders as a JSON response
+        return Response(
+            json.dumps({
+                'orders': orders['orders'],
+                'page': orders['page'],
+                'per_page': orders['per_page'],
+                'total_orders': orders['total_orders'],
+            }),
+            mimetype='application/json'
+        )
     # Endpoint for getting a list of orders with optional pagination
     @http("GET", "/orders", expected_exceptions=OrderNotFound)
     def get_orders(self, request):

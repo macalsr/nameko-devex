@@ -47,6 +47,27 @@ class OrdersService(OrderServiceManager, OrderDetailsServiceManager):
             'per_page': per_page,
             'total_orders': total_orders,
         }
+    @rpc
+    def list_orders_filtered_by_creation_date( self, initial_date, final_date,page=1, per_page=10):
+        # Convert initial_date and final_date to datetime objects, assuming they are in the ISO 8601 format
+        initial_date = datetime.fromisoformat(initial_date)
+        final_date = datetime.fromisoformat(final_date)
+
+        orders_query = self.db.query(Order)
+
+        # Apply a filter to the query to select orders within the date range
+        orders_query = orders_query.filter(Order.created_at >= initial_date, Order.created_at <= final_date)
+
+        total_orders = orders_query.count()
+        orders_query = orders_query.offset(int(page - 1) * int(per_page)).limit(per_page)
+        orders = orders_query.all()
+        orders_data = OrderSchema(many=True).dump(orders).data
+        return {
+            'orders': orders_data,
+            'page': page,
+            'per_page': per_page,
+            'total_orders': total_orders,
+        }
 
     @rpc
     def create_order(self, order_details):

@@ -80,7 +80,7 @@ echo
 # Test: Create Order
 echo "=== Creating Order ==="
 ORDER_ID=$(
- curl -X POST http://localhost:8000/orders \
+ curl -X POST "${STD_APP_URL}/orders" \
   -H 'accept: application/json' \
   -H 'Content-Type: application/json' \
   -d '{
@@ -122,4 +122,9 @@ echo "=== Deleting order id: the_odyssey ==="
 echo "=== Check if order id: 1 was deleted==="
     curl -s "${STD_APP_URL}/orders/1" | jq .
 
+echo
+echo "=== Get orders by date ==="
+curl -X GET  "${STD_APP_URL}/orders" \
+  -H "Content-Type: application/json" \
+  -d '{"initial_date": "2023-10-26T20:18:24.189615+00:00", "final_date": "2023-10-27T20:18:24.189615+00:00", "page": 1, "per_page": 10}'| jq .
 echo
