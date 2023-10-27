@@ -1,17 +1,23 @@
 import json
 from datetime import datetime
+
 from marshmallow import ValidationError
+
 from nameko import config
 from nameko.exceptions import BadRequest
 from nameko.rpc import RpcProxy
+
 from werkzeug import Response, Request
+from werkzeug.exceptions import NotFound, UnprocessableEntity
+
 from functools import lru_cache
 
 from gateway.entrypoints import http
-from gateway.exceptions import OrderNotFound, ProductNotFound
-from gateway.schemas import CreateOrderSchema, GetOrderSchema, ProductSchema, UpdateProductSchema
+from gateway.exceptions import (OrderNotFound, OrderNotFound, OrderNotCreated, OrderNotUpdated,
+                                OrderNotDeleted, ProductNotFound, ProductNotCreated, ProductNotUpdated,
+                                ProductNotDeleted)
+from gateway.schemas import CreateOrderSchema, GetOrderSchema, ProductSchema
 from orders.models import Order, Order
-
 from orders.models import OrderDetail
 
 
@@ -33,11 +39,18 @@ class GatewayService(object):
     def get_product(self, request, product_id):
         """Gets product by `product_id`
         """
-        product = self.products_rpc.get(product_id)
-        return Response(
-            ProductSchema().dumps(product).data,
-            mimetype='application/json'
-        )
+        try:
+            product = self.products_rpc.get(product_id)
+            return Response(
+                ProductSchema().dumps(product).data,
+                mimetype='application/json'
+            )
+        except ProductNotFound:
+            response_message = {
+                'error': 'Product not found',
+                'message': 'The product was not found based on the provided criteria.'
+            }
+            raise NotFound(json.dumps(response_message))
 
     # Endpoint for getting a list of products with optional filtering and pagination
     @http(
@@ -56,30 +69,37 @@ class GatewayService(object):
              Returns:
                  JSON response containing products, page, and per_page.
         """
-        products_rpc = self.products_rpc
-        req = Request(request.environ)
+        try:
+            products_rpc = self.products_rpc
+            req = Request(request.environ)
 
-        filter_title_term = req.args.get('filter', '')
-        page = int(req.args.get('page', 1))
-        per_page = int(req.args.get('per_page', 10))
+            filter_title_term = req.args.get('filter', '')
+            page = int(req.args.get('page', 1))
+            per_page = int(req.args.get('per_page', 10))
 
-        products = products_rpc.list(filter_title_term=filter_title_term, page=page, per_page=per_page)
-        response_data = {
-            'products': ProductSchema(many=True).dump(products).data,
-            'page': page,
-            'per_page': per_page
-        }
+            products = products_rpc.list(filter_title_term=filter_title_term, page=page, per_page=per_page)
+            response_data = {
+                'products': ProductSchema(many=True).dump(products).data,
+                'page': page,
+                'per_page': per_page
+            }
 
-        return Response(
-            json.dumps(response_data),
-            content_type='application/json'
-        )
+            return Response(
+                json.dumps(response_data),
+                content_type='application/json'
+            )
+        except ProductNotFound:
+            response_message = {
+                'error': 'Product not found',
+                'message': 'The product was not found based on the provided criteria.'
+            }
+            raise NotFound(json.dumps(response_message))
 
 
     # Endpoint for creating a new product
     @http(
         "POST", "/products",
-        expected_exceptions=(ValidationError, BadRequest)
+        expected_exceptions=(ValidationError, BadRequest, ProductNotCreated)
     )
     def create_product(self, request):
         """Create a new product - product data is posted as json
@@ -100,48 +120,69 @@ class GatewayService(object):
             {"id": "the_odyssey"}
 
         """
-
-        schema = ProductSchema(strict=True)
-
         try:
-            # load input data through a schema (for validation)
-            # Note - this may raise `ValueError` for invalid json,
-            # or `ValidationError` if data is invalid.
-            product_data = schema.loads(request.get_data(as_text=True)).data
-        except ValueError as exc:
-            raise BadRequest("Invalid json: {}".format(exc))
+            schema = ProductSchema(strict=True)
 
-        # Create the product
-        self.products_rpc.create(product_data)
-        return Response(
-            json.dumps({'id': product_data['id']}), mimetype='application/json'
-        )
+            try:
+                # load input data through a schema (for validation)
+                # Note - this may raise `ValueError` for invalid json,
+                # or `ValidationError` if data is invalid.
+                product_data = schema.loads(request.get_data(as_text=True)).data
+            except ValueError as exc:
+                raise BadRequest("Invalid json: {}".format(exc))
+
+            # Create the product
+            self.products_rpc.create(product_data)
+            return Response(
+                json.dumps({'id': product_data['id']}), mimetype='application/json'
+            )
+        except ProductNotCreated:
+            response_message = {
+                'error': 'Product not created',
+                'message': 'The product was not able to be created based on the provided criteria.'
+            }
+            raise UnprocessableEntity(json.dumps(response_message))
 
     # Endpoint for deleting a product by ID
     @http('DELETE', '/products/<string:product_id>',
-          expected_exceptions=ProductNotFound)
+          expected_exceptions=ProductNotDeleted)
     def delete_product(self, request, product_id):
-        self.products_rpc.delete(product_id)
-        return Response(status=204)
+        try:
+            self.products_rpc.delete(product_id)
+            return Response(status=204)
+
+        except ProductNotDeleted:
+            response_message = {
+                'error': 'Product not deleted',
+                'message': 'The product was not able to be deleted based on the provided criteria.'
+            }
+            raise UnprocessableEntity(json.dumps(response_message))
 
     # Endpoint for updating a product by ID
     @http('PATCH', '/products/<string:product_id>',
-          expected_exceptions=(ValidationError, BadRequest, ProductNotFound))
+          expected_exceptions=(ValidationError, BadRequest, ProductNotUpdated))
     def update_product(self, request, product_id):
-
-        schema = UpdateProductSchema(strict=True)
         try:
-            # load input data through a schema (for validation)
-            # Note - this may raise `ValueError` for invalid json,
-            # or `ValidationError` if data is invalid.
-            updated_product_data = schema.loads(request.get_data(as_text=True)).data
-        except ValueError as ex:
-            raise BadRequest('Invalid json: {}'.format(ex))
+            schema = UpdateProductSchema(strict=True)
+            try:
+                # load input data through a schema (for validation)
+                # Note - this may raise `ValueError` for invalid json,
+                # or `ValidationError` if data is invalid.
+                updated_product_data = schema.loads(request.get_data(as_text=True)).data
+            except ValueError as ex:
+                raise BadRequest('Invalid json: {}'.format(ex))
 
-        # Update the product
-        self.products_rpc.update(product_id, updated_product_data)
+            # Update the product
+            self.products_rpc.update(product_id, updated_product_data)
 
-        return Response(status=204)
+            return Response(status=204)
+
+        except ProductNotUpdated:
+            response_message = {
+                'error': 'Product not updated',
+                'message': 'The product was not able to be updated based on the provided criteria.'
+            }
+            raise UnprocessableEntity(json.dumps(response_message))
 
     # Endpoint for getting order details by order ID
     @http("GET", "/orders/<int:order_id>", expected_exceptions=OrderNotFound)
@@ -151,54 +192,81 @@ class GatewayService(object):
         Enhances the order details with full product details from the
         products-service.
         """
-        order = self._get_order(order_id)
-        return Response(
-            GetOrderSchema().dumps(order).data,
-            mimetype='application/json'
-        )
+        try:
+            order = self._get_order(order_id)
+            return Response(
+                GetOrderSchema().dumps(order).data,
+                mimetype='application/json'
+            )
+        except OrderNotFound:
+            response_message = {
+                'error': 'Order not found',
+                'message': 'The order was not found based on the provided criteria.'
+            }
+            raise NotFound(json.dumps(response_message))
+
 
     @http("GET", "/orders", expected_exceptions=OrderNotFound)
-    def get_orders(self, request, initial_date, final_date):
-        req = Request(request.environ)
+    def get_orders_by_date(self, request):
+        try:
+            req = Request(request.environ)
 
-        page = int(req.args.get('page', 1))
-        per_page = int(req.args.get('per_page', 10))
+            page = int(req.args.get('page', 1))
+            per_page = int(req.args.get('per_page', 10))
+            initial_date = (req.args.get('initial_date'))
+            final_date = (req.args.get('final_date'))
 
-        orders = self.orders_rpc.list_orders_filtered_by_creation_date(page=page,
-                                                              per_page=per_page,
-                                                              initial_date=initial_date,
-                                                              final_date=final_date)
+            orders = self.orders_rpc.list_orders_filtered_by_creation_date(page=page,
+                                                                  per_page=per_page,
+                                                                  initial_date=initial_date,
+                                                                  final_date=final_date)
 
-        # Serialize and return the orders as a JSON response
-        return Response(
-            json.dumps({
-                'orders': orders['orders'],
-                'page': orders['page'],
-                'per_page': orders['per_page'],
-                'total_orders': orders['total_orders'],
-            }),
-            mimetype='application/json'
-        )
+            # Serialize and return the orders as a JSON response
+            return Response(
+                json.dumps({
+                    'orders': orders['orders'],
+                    'page': orders['page'],
+                    'per_page': orders['per_page'],
+                    'total_orders': orders['total_orders'],
+                }),
+                mimetype='application/json'
+            )
+
+        except OrderNotFound:
+            response_message = {
+                'error': 'Orders not found',
+                'message': 'The orders was not found based on the provided criteria.'
+            }
+            raise NotFound(json.dumps(response_message))
+
+
     # Endpoint for getting a list of orders with optional pagination
     @http("GET", "/orders", expected_exceptions=OrderNotFound)
     def get_orders(self, request):
-        req = Request(request.environ)
+        try:
+            req = Request(request.environ)
 
-        page = int(req.args.get('page', 1))
-        per_page = int(req.args.get('per_page', 10))
+            page = int(req.args.get('page', 1))
+            per_page = int(req.args.get('per_page', 10))
 
-        orders = self.orders_rpc.list_orders(page=page, per_page=per_page)
+            orders = self.orders_rpc.list_orders(page=page, per_page=per_page)
 
-        # Serialize and return the orders as a JSON response
-        return Response(
-            json.dumps({
-                'orders': orders['orders'],
-                'page': orders['page'],
-                'per_page': orders['per_page'],
-                'total_orders': orders['total_orders'],
-            }),
-            mimetype='application/json'
-        )
+            # Serialize and return the orders as a JSON response
+            return Response(
+                json.dumps({
+                    'orders': orders['orders'],
+                    'page': orders['page'],
+                    'per_page': orders['per_page'],
+                    'total_orders': orders['total_orders'],
+                }),
+                mimetype='application/json'
+            )
+        except OrderNotFound:
+            response_message = {
+                'error': 'Orders not found',
+                'message': 'The orders was not found based on the provided criteria.'
+            }
+            raise NotFound(json.dumps(response_message))
 
     def _get_order(self, order_id):
         # Retrieve order data from the orders service.
@@ -219,7 +287,7 @@ class GatewayService(object):
     # Endpoint for creating a new order
     @http(
         "POST", "/orders",
-        expected_exceptions=(ValidationError, ProductNotFound, BadRequest)
+        expected_exceptions=(ValidationError, OrderNotCreated, BadRequest)
     )
     def create_order(self, request):
         """Create a new order - order data is posted as json
@@ -247,21 +315,29 @@ class GatewayService(object):
             {"id": 1234}
 
         """
-
-        schema = CreateOrderSchema(strict=True)
-
         try:
-            # load input data through a schema (for validation)
-            # Note - this may raise `ValueError` for invalid json,
-            # or `ValidationError` if data is invalid.
-            order_data = schema.loads(request.get_data(as_text=True)).data
-            id_ = self._create_order(order_data)
-        except ValueError as exc:
-            raise BadRequest("Invalid json: {}".format(exc))
-        except ProductNotFound as exc:
-            raise ProductNotFound("{}".format(exc))
 
-        return Response(json.dumps({'id': id_}), mimetype='application/json')
+            schema = CreateOrderSchema(strict=True)
+
+            try:
+                # load input data through a schema (for validation)
+                # Note - this may raise `ValueError` for invalid json,
+                # or `ValidationError` if data is invalid.
+                order_data = schema.loads(request.get_data(as_text=True)).data
+                id_ = self._create_order(order_data)
+            except ValueError as exc:
+                raise BadRequest("Invalid json: {}".format(exc))
+            except OrderNotCreated as exc:
+                raise OrderNotCreated("{}".format(exc))
+
+            return Response(json.dumps({'id': id_}), mimetype='application/json')
+        except OrderNotCreated:
+            response_message = {
+                'error': 'Orders not created',
+                'message': 'The orders was not able to be created based on the provided criteria.'
+            }
+            raise UnprocessableEntity(json.dumps(response_message))
+
 
     def _create_order(self, order_data):
         # Check if order product IDs are valid
@@ -279,8 +355,17 @@ class GatewayService(object):
         return result['id']
 
     # Endpoint for deleting a order by ID
-    @http("DELETE","/orders/<int:order_id>", expected_exceptions=OrderNotFound)
+    @http("DELETE","/orders/<int:order_id>", expected_exceptions=OrderNotDeleted)
     def delete_order(self,request,order_id):
         """DELETE AN EXISTING ORDER BY 'ORDER_ID'"""
-        self.orders_rpc.delete_order(order_id)
-        return Response(status=204)
+        try:
+            self.orders_rpc.delete_order(order_id)
+            return Response(status=204)
+        except OrderNotDeleted:
+            response_message = {
+                'error': 'Orders not deleted',
+                'message': 'The orders was not able to be deleted based on the provided criteria.'
+            }
+            raise UnprocessableEntity(json.dumps(response_message))
+
+

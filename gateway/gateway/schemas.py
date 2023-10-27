@@ -21,10 +21,20 @@ class ProductSchema(Schema):
     passenger_capacity = fields.Int(required=True)
 
 class UpdateProductSchema(Schema):
-    title = fields.Str(required=True)
-    maximum_speed = fields.Int(required=True)
-    in_stock = fields.Int(required=True)
-    passenger_capacity = fields.Int(required=True)
+    title = fields.Str(required=False)
+    maximum_speed = fields.Int(required=False)
+    in_stock = fields.Int(required=False)
+    passenger_capacity = fields.Int(required=False)
+
+class UpdateOrderSchema(Schema):
+    class OrderDetail(Schema):
+        quantity = fields.Int()
+        product_id = fields.Str()
+        image = fields.Str()
+        price = fields.Decimal(as_string=True)
+        product = fields.Nested(ProductSchema, many=False)
+
+    order_details = fields.Nested(OrderDetail, many=True)
 
 class GetOrderSchema(Schema):
 

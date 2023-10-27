@@ -126,5 +126,6 @@ echo
 echo "=== Get orders by date ==="
 curl -X GET  "${STD_APP_URL}/orders" \
   -H "Content-Type: application/json" \
-  -d '{"initial_date": "2023-10-26T20:18:24.189615+00:00", "final_date": "2023-10-27T20:18:24.189615+00:00", "page": 1, "per_page": 10}'| jq .
+  -d '{"initial_date": "2023-10-26T20:18:24.189615+00:00", "final_date": "2023-10-27T20:18:24.189615+00:00",
+   "page": 1, "per_page": 10}'| jq .
 echo

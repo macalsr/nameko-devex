@@ -3,7 +3,7 @@ from nameko.rpc import rpc
 from nameko_sqlalchemy import DatabaseSession
 from functools import lru_cache
 
-from orders.exceptions import NotFound
+from orders.exceptions import NotFound, NotCreated, NotDeleted, NotUpdated
 from orders.models import DeclarativeBase, Order, OrderDetail
 from orders.schemas import OrderSchema
 
@@ -32,65 +32,78 @@ class OrdersService(OrderServiceManager, OrderDetailsServiceManager):
     @rpc
     def get_order(self, order_id):
         order = self._get_order(order_id)
+        if not order:
+            raise NotFound("Order not found")
         return OrderSchema().dump(order).data
 
     @rpc
     def list_orders(self,page=1, per_page=10):
-        orders_query = self.db.query(Order)
-        total_orders = orders_query.count()
-        orders_query = orders_query.offset(int(page - 1) * int(per_page)).limit(per_page)
-        orders = orders_query.all()
-        orders_data = OrderSchema(many=True).dump(orders).data
-        return {
-            'orders': orders_data,
-            'page': page,
-            'per_page': per_page,
-            'total_orders': total_orders,
-        }
+        try:
+            orders_query = self.db.query(Order)
+            total_orders = orders_query.count()
+            orders_query = orders_query.offset(int(page - 1) * int(per_page)).limit(per_page)
+            orders = orders_query.all()
+            orders_data = OrderSchema(many=True).dump(orders).data
+
+            return {
+                'orders': orders_data,
+                'page': page,
+                'per_page': per_page,
+                'total_orders': total_orders,
+            }
+        except Exception as exc:
+            raise NotFound(exc)
+
     @rpc
     def list_orders_filtered_by_creation_date( self, initial_date, final_date,page=1, per_page=10):
-        # Convert initial_date and final_date to datetime objects, assuming they are in the ISO 8601 format
-        initial_date = datetime.fromisoformat(initial_date)
-        final_date = datetime.fromisoformat(final_date)
+        try:
+            # Convert initial_date and final_date to datetime objects, assuming they are in the ISO 8601 format
+            initial_date = datetime.fromisoformat(initial_date)
+            final_date = datetime.fromisoformat(final_date)
 
-        orders_query = self.db.query(Order)
+            orders_query = self.db.query(Order)
 
-        # Apply a filter to the query to select orders within the date range
-        orders_query = orders_query.filter(Order.created_at >= initial_date, Order.created_at <= final_date)
+            # Apply a filter to the query to select orders within the date range
+            orders_query = orders_query.filter(Order.created_at >= initial_date, Order.created_at <= final_date)
 
-        total_orders = orders_query.count()
-        orders_query = orders_query.offset(int(page - 1) * int(per_page)).limit(per_page)
-        orders = orders_query.all()
-        orders_data = OrderSchema(many=True).dump(orders).data
-        return {
-            'orders': orders_data,
-            'page': page,
-            'per_page': per_page,
-            'total_orders': total_orders,
-        }
+            total_orders = orders_query.count()
+            orders_query = orders_query.offset(int(page - 1) * int(per_page)).limit(per_page)
+            orders = orders_query.all()
+            orders_data = OrderSchema(many=True).dump(orders).data
+            return {
+                'orders': orders_data,
+                'page': page,
+                'per_page': per_page,
+                'total_orders': total_orders,
+            }
+        except Exception as exc:
+            raise NotFound(exc)
 
     @rpc
     def create_order(self, order_details):
-        order = Order(
-            order_details=[
-                OrderDetail(
-                    product_id=order_detail['product_id'],
-                    price=order_detail['price'],
-                    quantity=order_detail['quantity']
-                )
-                for order_detail in order_details
-            ]
-        )
-        self.db.add(order)
-        self.db.commit()
+        try:
+            order = Order(
+                order_details=[
+                    OrderDetail(
+                        product_id=order_detail['product_id'],
+                        price=order_detail['price'],
+                        quantity=order_detail['quantity']
+                    )
+                    for order_detail in order_details
+                ]
+            )
+            self.db.add(order)
+            self.db.commit()
 
-        order = OrderSchema().dump(order).data
+            order = OrderSchema().dump(order).data
 
-        self.event_dispatcher('order_created', {
-            'order': order,
-        })
+            self.event_dispatcher('order_created', {
+                'order': order,
+            })
 
-        return order
+            return order
+        except Exception as exc:
+            raise NotCreated(exc)
 
     @rpc
     def update_order(self, order):
@@ -98,14 +111,14 @@ class OrdersService(OrderServiceManager, OrderDetailsServiceManager):
         self._update_order_details(order,order['order_details'])
         self.db.commit()
 
-    def _update_order_details(self,order,order_details):
-        for order_detail in order.order_details:
-            order_details.price = order_details[order_detail.id]['price']
 
     @rpc
     def delete_order(self, order_id):
-        order = self._get_order(order_id)
-        print(order)
-        for order_detail in order.order_details:
-            self.db.delete(order_detail)
-        self.db.commit()
+        try:
+            order = self._get_order(order_id)
+            print(order)
+            for order_detail in order.order_details:
+                self.db.delete(order_detail)
+            self.db.commit()
+        except Exception as exc:
+            raise NotDeleted(exc)
