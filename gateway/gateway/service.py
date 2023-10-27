@@ -25,6 +25,7 @@ class GatewayService(object):
     orders_rpc = RpcProxy('orders')
     products_rpc = RpcProxy('products')
 
+    # Endpoint for getting a product by ID
     @http(
         "GET", "/products/<string:product_id>",
         expected_exceptions=ProductNotFound
@@ -38,6 +39,7 @@ class GatewayService(object):
             mimetype='application/json'
         )
 
+    # Endpoint for getting a list of products with optional filtering and pagination
     @http(
         "GET", "/products",
         expected_exceptions=ProductNotFound
@@ -73,6 +75,8 @@ class GatewayService(object):
             content_type='application/json'
         )
 
+
+    # Endpoint for creating a new product
     @http(
         "POST", "/products",
         expected_exceptions=(ValidationError, BadRequest)
@@ -113,12 +117,14 @@ class GatewayService(object):
             json.dumps({'id': product_data['id']}), mimetype='application/json'
         )
 
+    # Endpoint for deleting a product by ID
     @http('DELETE', '/products/<string:product_id>',
           expected_exceptions=ProductNotFound)
     def delete_product(self, request, product_id):
         self.products_rpc.delete(product_id)
         return Response(status=204)
 
+    # Endpoint for updating a product by ID
     @http('PATCH', '/products/<string:product_id>',
           expected_exceptions=(ValidationError, BadRequest, ProductNotFound))
     def update_product(self, request, product_id):
@@ -137,6 +143,7 @@ class GatewayService(object):
 
         return Response(status=204)
 
+    # Endpoint for getting order details by order ID
     @http("GET", "/orders/<int:order_id>", expected_exceptions=OrderNotFound)
     def get_order(self, request, order_id):
         """Gets the order details for the order given by `order_id`.
@@ -150,6 +157,7 @@ class GatewayService(object):
             mimetype='application/json'
         )
 
+    # Endpoint for getting a list of orders with optional pagination
     @http("GET", "/orders", expected_exceptions=OrderNotFound)
     def get_orders(self, request):
         req = Request(request.environ)
@@ -186,6 +194,7 @@ class GatewayService(object):
         return order
 
 
+    # Endpoint for creating a new order
     @http(
         "POST", "/orders",
         expected_exceptions=(ValidationError, ProductNotFound, BadRequest)
@@ -247,6 +256,7 @@ class GatewayService(object):
         )
         return result['id']
 
+    # Endpoint for deleting a order by ID
     @http("DELETE","/orders/<int:order_id>", expected_exceptions=OrderNotFound)
     def delete_order(self,request,order_id):
         """DELETE AN EXISTING ORDER BY 'ORDER_ID'"""

@@ -1,0 +1,27 @@
+✓ Enhance product service - ok
+✓ Delete product rpc call - ok
+✓ Wire into smoketest.sh - ok
+✓ (bonus) Wire into perf-test - ok
+✓ (bonus) Wire unit-test for this method - ok
+✓ Enhance order service - ok
+✓ List orders rpc call - ok
+✓ Wire into smoketest.sh - ok
+✓ (bonus) Wire into perf-test - ok
+✓ (bonus) Wire unit-test for this method - ok
+✓ Execute performance test - ok
+
+✓ Question 1: Why is performance degrading as the test run longer?
+    Answer: The performance degradation during extended test runs is primarily dye to the services practices
+    of loading substantial amounts of data without implementing essential optimizations such as pagination and caching.
+    These two crucial elements are vital for efficient data retrieval and management, reducing the strain on resources
+    and improving overall service responsiveness
+
+✓ Question 2: How do you fix it?
+    Answer : I addressed the performance degradation issue by implementing the following key solutions:
+    ✓ Added pagination to methods that load significant amounts of data. This ensures that data is retrieved in manageable chunks,
+    reducing memory consumption and enhancing efficiency.
+    ✓ Introduced a cache to the methods responsible for querying data from both PostgresSQL and Redis. Caching minimizes the need
+    for repetitive data retrieval, resulting in faster response times and reduced resources usage. These optimizations collectively
+    improved service performance during prolonged test runs.
+
+✓ (bonus): Fix it - ok
